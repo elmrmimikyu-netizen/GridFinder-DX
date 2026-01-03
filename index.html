@@ -3,259 +3,676 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridFinder-DX | Herramienta de Radioaficionado</title>
+    <title>GridFinder-DX | Ultimate Station Tool</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
+        /* --- 1. VARIABLES Y RESET --- */
         :root {
-            --primary: #00ff41; /* Verde Radio */
-            --accent: #ffbf00;  /* Ámbar */
-            --bg: #0a0a0a;
-            --panel: #161616;
-            --text: #e0e0e0;
+            --primary: #00ff41;       /* Verde Matrix/Fósforo */
+            --primary-dim: #008f24;
+            --accent: #ffbf00;        /* Ámbar Radio */
+            --danger: #ff4757;        /* Rojo Alerta */
+            --bg-dark: #0f0f0f;
+            --panel-bg: #1a1a1a;
             --border: #333;
+            --text-main: #e0e0e0;
+            --text-muted: #888;
+            --font-mono: 'Courier New', monospace;
+            --font-ui: 'Segoe UI', system-ui, sans-serif;
+            --shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
-        body, html { 
-            margin: 0; 
-            padding: 0; 
-            height: 100%; 
-            font-family: 'Segoe UI', Tahoma, sans-serif; 
-            background: var(--bg); 
-            color: var(--text); 
-            overflow: hidden; 
-        }
+        * { box-sizing: border-box; outline: none; }
         
-        /* Layout */
-        .main-container { display: flex; height: 100vh; width: 100vw; }
+        body, html { 
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            overflow: hidden; /* Evita scroll en el body */
+        }
 
-        /* BARRA LATERAL */
+        /* --- 2. LAYOUT PRINCIPAL --- */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* --- 3. BARRA LATERAL (SIDEBAR) --- */
         .sidebar {
-            width: 350px;
-            background: var(--panel);
-            border-right: 2px solid var(--border);
+            width: 380px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             padding: 20px;
-            box-sizing: border-box;
             overflow-y: auto;
-            z-index: 1001;
+            z-index: 1000;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
         }
 
-        .sidebar h2 { 
-            color: var(--primary); 
-            font-size: 1.3rem; 
-            border-bottom: 2px solid var(--primary); 
-            padding-bottom: 10px; 
-            margin-top: 0;
-            letter-spacing: 1px;
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary);
         }
 
-        /* MAPA */
-        #map { flex-grow: 1; background: #111; }
+        .brand i { font-size: 1.5rem; color: var(--primary); }
+        .brand h1 { margin: 0; font-size: 1.4rem; letter-spacing: 1px; color: #fff; }
 
         /* WIDGETS */
         .widget {
-            background: #222;
+            background: #252525;
+            border: 1px solid var(--border);
+            border-radius: 6px;
             padding: 15px;
-            border-radius: 8px;
             margin-bottom: 15px;
-            border: 1px solid #444;
+            position: relative;
         }
 
-        .widget-title { 
-            font-size: 0.7rem; 
-            color: #888; 
-            text-transform: uppercase; 
-            margin-bottom: 5px; 
+        .widget-header {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
         }
 
-        .widget-value { 
-            font-size: 1.8rem; 
-            font-family: 'Courier New', monospace; 
-            color: var(--primary); 
-            font-weight: bold; 
+        /* RELOJ */
+        .clock-display {
+            font-family: var(--font-mono);
+            font-size: 2.2rem;
+            color: var(--accent);
+            text-align: center;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 191, 0, 0.2);
         }
-
-        .utc-clock { color: var(--accent); text-align: center; font-size: 2.2rem; }
-
-        .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-        /* BOTÓN RESET */
-        .btn-reset {
-            width: 100%;
-            background: #444;
-            color: white;
-            border: 1px solid #555;
-            padding: 8px;
-            margin-top: 10px;
-            cursor: pointer;
-            font-family: inherit;
-            border-radius: 4px;
+        .date-display {
+            text-align: center;
             font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 5px;
         }
-        .btn-reset:hover { background: #ff4757; border-color: #ff4757; }
 
-        #dx-status { font-size: 0.75rem; color: var(--accent); margin-top: 8px; }
+        /* INPUTS Y BUSCADOR */
+        .search-box { display: flex; gap: 5px; margin-bottom: 10px; }
+        
+        input[type="text"] {
+            background: #111;
+            border: 1px solid var(--border);
+            color: var(--primary);
+            padding: 8px;
+            border-radius: 4px;
+            width: 100%;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+        }
+        
+        input[type="text"]:focus { border-color: var(--primary); }
 
-        /* Responsivo móvil */
+        .btn {
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            color: #fff;
+        }
+        .btn-primary { background: var(--primary-dim); }
+        .btn-primary:hover { background: var(--primary); color: #000; }
+        .btn-danger { background: #552222; color: #ffadad; width: 100%; margin-top: 10px; }
+        .btn-danger:hover { background: var(--danger); color: white; }
+
+        /* GRID INFO */
+        .grid-big {
+            font-size: 2.5rem;
+            font-family: var(--font-mono);
+            color: #00e5ff;
+            text-align: center;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .coords-small {
+            font-size: 0.8rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            margin-top: 5px;
+        }
+
+        /* CALCULADORA DX */
+        .dx-results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .dx-val { font-size: 1.4rem; color: var(--accent); font-family: var(--font-mono); }
+        .dx-label { font-size: 0.7rem; color: #aaa; }
+
+        .step-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+        .step-list li { margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+        .step-active { color: var(--primary); }
+        .check-icon { width: 15px; }
+
+        /* --- 4. MAPA --- */
+        #map {
+            flex-grow: 1;
+            background: #050505;
+            height: 100%;
+            width: 100%;
+        }
+        
+        /* Custom Popup Leaflet */
+        .leaflet-popup-content-wrapper {
+            background: #222;
+            color: #eee;
+            border: 1px solid var(--primary);
+            border-radius: 4px;
+        }
+        .leaflet-popup-tip { background: #222; }
+        .leaflet-container a.leaflet-popup-close-button { color: #ccc; }
+
+        /* --- 5. NOTIFICACIONES (TOASTS) --- */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            background: #222;
+            border-left: 4px solid var(--primary);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease-out;
+            min-width: 250px;
+        }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* --- 6. RESPONSIVE --- */
         @media (max-width: 768px) {
-            .main-container { flex-direction: column; }
-            .sidebar { width: 100%; height: auto; }
-            #map { height: 60vh; }
+            .app-container { flex-direction: column; }
+            .sidebar { 
+                width: 100%; 
+                height: 45vh; 
+                order: 2; 
+                border-right: none; 
+                border-top: 2px solid var(--border);
+            }
+            #map { height: 55vh; order: 1; }
+            .brand h1 { font-size: 1.1rem; }
         }
     </style>
 </head>
 <body>
 
-    <div class="main-container">
-        <div class="sidebar">
-            <h2>GRIDFINDER-DX</h2>
-            
-            <div class="widget">
-                <div class="widget-title">Tiempo Universal (UTC)</div>
-                <div id="utc-clock" class="widget-value utc-clock">00:00:00</div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-satellite-dish"></i>
+                <h1>GRIDFINDER-DX <span style="font-size:0.6em; color:#666;">PRO v2.0</span></h1>
             </div>
 
             <div class="widget">
-                <div class="widget-title">Cálculo de Rumbo (DX)</div>
-                <div class="prop-grid">
+                <div class="widget-header">
+                    <span><i class="fa-regular fa-clock"></i> Tiempo Universal</span>
+                    <span style="color:var(--accent);">UTC / ZULU</span>
+                </div>
+                <div class="clock-display" id="utc-clock">00:00:00</div>
+                <div class="date-display" id="utc-date">---</div>
+            </div>
+
+            <div class="widget">
+                <div class="widget-header"><i class="fa-solid fa-magnifying-glass"></i> Búsqueda Rápida</div>
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="Prefijo (EA) o Grid (IN80)...">
+                    <button class="btn btn-primary" onclick="handleSearch()">IR</button>
+                </div>
+                <div style="font-size: 0.75rem; color: #666;">
+                    Ejemplos: "EA", "K1", "JA", "IN80DX"
+                </div>
+            </div>
+
+            <div class="widget">
+                <div class="widget-header"><i class="fa-solid fa-location-crosshairs"></i> Posición Seleccionada</div>
+                <div class="grid-big" id="current-grid">------</div>
+                <div class="coords-small" id="current-coords">Haz clic en el mapa</div>
+            </div>
+
+            <div class="widget">
+                <div class="widget-header"><i class="fa-solid fa-ruler-combined"></i> Calculadora de Antena</div>
+                
+                <ul class="step-list">
+                    <li id="step-1" class="step-active"><i class="fa-solid fa-circle-dot check-icon"></i> 1. Marca tu Base (Home)</li>
+                    <li id="step-2"><i class="fa-regular fa-circle check-icon"></i> 2. Marca el Destino (DX)</li>
+                </ul>
+
+                <div class="dx-results">
                     <div>
-                        <div class="widget-title" style="font-size: 0.6rem;">Azimut</div>
-                        <div id="bearing-info" class="widget-value" style="color: var(--accent);">---°</div>
+                        <div class="dx-label">RUMBO (AZIMUT)</div>
+                        <div class="dx-val" id="dx-bearing">---°</div>
                     </div>
                     <div>
-                        <div class="widget-title" style="font-size: 0.6rem;">Distancia</div>
-                        <div id="distance-info" class="widget-value" style="font-size: 1.2rem;">--- km</div>
+                        <div class="dx-label">DISTANCIA</div>
+                        <div class="dx-val" id="dx-dist">--- km</div>
                     </div>
                 </div>
-                <div id="dx-status">1. Haz clic para marcar tu posición (Base)</div>
-                <button class="btn-reset" onclick="resetDX()">Borrar Puntos</button>
+
+                <button class="btn btn-danger" onclick="resetDXTools()">
+                    <i class="fa-solid fa-trash"></i> Borrar Cálculo
+                </button>
             </div>
 
             <div class="widget">
-                <div class="widget-title">QTH Locator Seleccionado</div>
-                <div id="grid-info" class="widget-value" style="font-size: 2rem; color: #00e5ff;">------</div>
-                <div id="coords-info" style="font-size: 0.75rem; color: #888; margin-top: 5px;">Lat/Lon Info</div>
+                <div class="widget-header"><i class="fa-solid fa-sun"></i> Clima Espacial (Simulado)</div>
+                <div style="display:flex; justify-content:space-between; text-align:center;">
+                    <div><span style="color:#aaa; font-size:0.7rem;">SFI</span><br><b style="color:var(--primary);">152</b></div>
+                    <div><span style="color:#aaa; font-size:0.7rem;">SN</span><br><b style="color:var(--primary);">124</b></div>
+                    <div><span style="color:#aaa; font-size:0.7rem;">A-Index</span><br><b style="color:var(--accent);">4</b></div>
+                    <div><span style="color:#aaa; font-size:0.7rem;">K-Index</span><br><b style="color:#00ff41;">2</b></div>
+                </div>
             </div>
 
-            <div style="margin-top: auto; font-size: 0.7rem; color: #555; text-align: center;">
-                GRIDFINDER-DX v1.1 | 73 de la comunidad
+            <div style="text-align:center; margin-top:auto; font-size:0.7rem; color:#444;">
+                &copy; 2024 HamRadio Tools Open Source
             </div>
-        </div>
+        </aside>
 
-        <div id="map"></div>
+        <main id="map"></main>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div class="toast-container" id="toast-area"></div>
 
     <script>
-        // --- CONFIGURACIÓN DEL MAPA ---
-        const map = L.map('map', {
-            center: [20, 0],
-            zoom: 3,
-            zoomControl: false 
-        });
+        /**
+         * ------------------------------------------------------------------
+         * 1. BASE DE DATOS DE PREFIJOS (Radio Amateur Prefixes)
+         * ------------------------------------------------------------------
+         * Una lista condensada de prefijos comunes para la función de búsqueda.
+         */
+        const DXCC_DB = {
+            "EA": { name: "España", lat: 40.41, lon: -3.70 },
+            "EA6": { name: "Islas Baleares", lat: 39.69, lon: 3.01 },
+            "EA8": { name: "Islas Canarias", lat: 28.29, lon: -16.62 },
+            "F": { name: "Francia", lat: 46.22, lon: 2.21 },
+            "K": { name: "USA", lat: 39.82, lon: -98.57 },
+            "W": { name: "USA", lat: 38.00, lon: -97.00 },
+            "VE": { name: "Canadá", lat: 56.13, lon: -106.34 },
+            "VK": { name: "Australia", lat: -25.27, lon: 133.77 },
+            "ZL": { name: "Nueva Zelanda", lat: -40.90, lon: 174.88 },
+            "JA": { name: "Japón", lat: 36.20, lon: 138.25 },
+            "BY": { name: "China", lat: 35.86, lon: 104.19 },
+            "G": { name: "Reino Unido", lat: 55.37, lon: -3.43 },
+            "I": { name: "Italia", lat: 41.87, lon: 12.56 },
+            "DL": { name: "Alemania", lat: 51.16, lon: 10.45 },
+            "PY": { name: "Brasil", lat: -14.23, lon: -51.92 },
+            "LU": { name: "Argentina", lat: -38.41, lon: -63.61 },
+            "CE": { name: "Chile", lat: -35.67, lon: -71.54 },
+            "CX": { name: "Uruguay", lat: -32.52, lon: -55.76 },
+            "YV": { name: "Venezuela", lat: 6.42, lon: -66.58 },
+            "HK": { name: "Colombia", lat: 4.57, lon: -74.29 },
+            "XE": { name: "México", lat: 23.63, lon: -102.55 },
+            "ZS": { name: "Sudáfrica", lat: -30.55, lon: 22.93 },
+            "UA": { name: "Rusia (Eur)", lat: 55.75, lon: 37.61 },
+            "UA0": { name: "Rusia (Asi)", lat: 60.00, lon: 100.00 },
+            "CT": { name: "Portugal", lat: 39.39, lon: -8.22 },
+            "4X": { name: "Israel", lat: 31.04, lon: 34.85 },
+            "HZ": { name: "Arabia Saudita", lat: 23.88, lon: 45.07 },
+            "VU": { name: "India", lat: 20.59, lon: 78.96 },
+            "YB": { name: "Indonesia", lat: -0.78, lon: 113.92 },
+            "KH6": { name: "Hawaii", lat: 19.89, lon: -155.58 },
+            "KL7": { name: "Alaska", lat: 64.20, lon: -149.49 }
+        };
+
+        /**
+         * ------------------------------------------------------------------
+         * 2. LÓGICA DE APLICACIÓN
+         * ------------------------------------------------------------------
+         */
+
+        // Variables Globales
+        let map;
+        let markerHome = null;
+        let markerDX = null;
+        let polylineDX = null;
         
-        L.control.zoom({ position: 'bottomright' }).addTo(map);
+        // Configuración inicial del mapa
+        function initMap() {
+            try {
+                // Crear mapa centrado en el Atlántico
+                map = L.map('map', {
+                    center: [25, -30],
+                    zoom: 3,
+                    zoomControl: false, // Movemos el control de zoom después
+                    minZoom: 2
+                });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: 'GridFinder-DX'
-        }).addTo(map);
+                // Capa oscura (Estilo Hack/Radio)
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap &copy; CARTO',
+                    subdomains: 'abcd',
+                    maxZoom: 19
+                }).addTo(map);
 
-        // Variables de estado
-        let pointHome = null;
-        let pointDX = null;
-        let markerHome, markerDX, polyline;
+                // Control de zoom abajo a la derecha
+                L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // --- ALGORITMO MAIDENHEAD (GRID) ---
-        function getGrid(lat, lon) {
-            let adjLat = lat + 90;
-            let adjLon = lon + 180;
-            let grid = String.fromCharCode(65 + Math.floor(adjLon / 20));
-            grid += String.fromCharCode(65 + Math.floor(adjLat / 10));
-            grid += Math.floor((adjLon % 20) / 2);
-            grid += Math.floor(adjLat % 10);
-            grid += String.fromCharCode(97 + Math.floor((adjLon % 2) * 12));
-            grid += String.fromCharCode(97 + Math.floor((adjLat % 1) * 24));
-            return grid.toUpperCase();
+                // Evento Clic Principal
+                map.on('click', handleMapClick);
+
+                console.log("Sistema de mapas inicializado correctamente.");
+                showToast("Sistema Listo. 73!", "success");
+
+            } catch (error) {
+                console.error("Error al cargar el mapa:", error);
+                alert("Error crítico cargando el mapa. Verifica tu conexión.");
+            }
         }
 
-        // --- CÁLCULOS MATEMÁTICOS DX ---
-        function calculateBearing(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Radio Tierra km
-            const φ1 = lat1 * Math.PI / 180;
-            const φ2 = lat2 * Math.PI / 180;
-            const Δλ = (lon2 - lon1) * Math.PI / 180;
+        // Manejo de clics en el mapa (Máquina de estados simple)
+        function handleMapClick(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            
+            // 1. Calcular Grid y actualizar UI
+            const grid = calculateMaidenhead(lat, lng);
+            updateGridUI(grid, lat, lng);
 
-            // Distancia (Haversine)
-            const a = Math.sin((φ2 - φ1) / 2) * Math.sin((φ2 - φ1) / 2) +
-                      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            // 2. Lógica de Puntos (Home vs DX)
+            if (!markerHome) {
+                // Poner Base
+                markerHome = createMarker(lat, lng, '#00ff41', 'BASE (QTH)');
+                document.getElementById('step-1').innerHTML = '<i class="fa-solid fa-circle-check check-icon" style="color:var(--primary)"></i> 1. Base Fijada';
+                document.getElementById('step-2').classList.add('step-active');
+                showToast(`Base fijada en ${grid}`, "info");
+            } else if (!markerDX) {
+                // Poner DX
+                markerDX = createMarker(lat, lng, '#ffbf00', 'DX (Target)');
+                document.getElementById('step-2').innerHTML = '<i class="fa-solid fa-circle-check check-icon" style="color:var(--accent)"></i> 2. Destino Fijado';
+                
+                // Calcular Ruta
+                drawPath(markerHome.getLatLng(), markerDX.getLatLng());
+            } else {
+                // Si ya hay dos puntos, solo actualizamos info del Grid clickeado sin borrar puntos
+                // Opcional: mover el punto DX al nuevo click
+                map.removeLayer(markerDX);
+                if(polylineDX) map.removeLayer(polylineDX);
+                markerDX = createMarker(lat, lng, '#ffbf00', 'DX (Target)');
+                drawPath(markerHome.getLatLng(), markerDX.getLatLng());
+            }
+        }
+
+        // Crear Marcador Personalizado
+        function createMarker(lat, lng, color, title) {
+            return L.circleMarker([lat, lng], {
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.5,
+                radius: 8,
+                weight: 2
+            }).addTo(map).bindPopup(`<b>${title}</b><br>${calculateMaidenhead(lat, lng)}`).openPopup();
+        }
+
+        // Dibujar línea y calcular datos
+        function drawPath(p1, p2) {
+            // Dibujar línea geodésica (visual simple)
+            polylineDX = L.polyline([p1, p2], {
+                color: '#ffbf00',
+                weight: 2,
+                opacity: 0.8,
+                dashArray: '10, 10'
+            }).addTo(map);
+
+            // Ajustar vista para ver ambos puntos
+            map.fitBounds(polylineDX.getBounds(), { padding: [50, 50] });
+
+            // Cálculos Matemáticos
+            const result = calculateBearingDistance(p1.lat, p1.lng, p2.lat, p2.lng);
+            
+            // Animar números
+            animateValue("dx-bearing", result.bearing, "°");
+            animateValue("dx-dist", result.dist, " km");
+            
+            showToast(`Rumbo calculado: ${result.bearing}°`, "success");
+        }
+
+        /**
+         * ------------------------------------------------------------------
+         * 3. ALGORITMOS MATEMÁTICOS (CORE)
+         * ------------------------------------------------------------------
+         */
+
+        // Lat/Lon -> Maidenhead Grid (Algoritmo estándar)
+        function calculateMaidenhead(lat, lon) {
+            const y = lat + 90.0;
+            const x = lon + 180.0;
+            
+            const f1 = String.fromCharCode(65 + Math.floor(x / 20));
+            const f2 = String.fromCharCode(65 + Math.floor(y / 10));
+            const f3 = Math.floor((x % 20) / 2);
+            const f4 = Math.floor(y % 10);
+            const f5 = String.fromCharCode(97 + Math.floor((x % 2) * 12));
+            const f6 = String.fromCharCode(97 + Math.floor((y % 1) * 24));
+            
+            return f1 + f2 + f3 + f4 + f5 + f6;
+        }
+
+        // Maidenhead -> Lat/Lon (Simplificado al centro del cuadro)
+        function gridToLatLon(grid) {
+            if (!grid || grid.length < 4) return null;
+            grid = grid.toUpperCase();
+            
+            const lon = (grid.charCodeAt(0) - 65) * 20 - 180 + (parseInt(grid[2]) * 2) + 1;
+            const lat = (grid.charCodeAt(1) - 65) * 10 - 90 + parseInt(grid[3]) + 0.5;
+            
+            return { lat: lat, lon: lon };
+        }
+
+        // Distancia y Azimut (Haversine + Forward Azimuth)
+        function calculateBearingDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radio Tierra km
+            const φ1 = toRad(lat1);
+            const φ2 = toRad(lat2);
+            const Δφ = toRad(lat2 - lat1);
+            const Δλ = toRad(lon2 - lon1);
+
+            // Distancia
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             const d = R * c;
 
             // Azimut
             const y = Math.sin(Δλ) * Math.cos(φ2);
-            const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-            const θ = Math.atan2(y, x);
-            const brng = (θ * 180 / Math.PI + 360) % 360;
+            const x = Math.cos(φ1) * Math.sin(φ2) -
+                      Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+            let brng = toDeg(Math.atan2(y, x));
+            brng = (brng + 360) % 360; // Normalizar a 0-360
 
-            return { dist: d.toFixed(0), bear: brng.toFixed(1) };
+            return { dist: Math.round(d), bearing: Math.round(brng) };
         }
 
-        // --- MANEJO DE CLICS ---
-        map.on('click', function(e) {
-            const { lat, lng } = e.latlng;
-            const grid = getGrid(lat, lng);
+        function toRad(val) { return val * Math.PI / 180; }
+        function toDeg(val) { return val * 180 / Math.PI; }
 
-            // Actualizar info básica
-            document.getElementById('grid-info').innerText = grid;
-            document.getElementById('coords-info').innerText = `LAT: ${lat.toFixed(4)} | LON: ${lng.toFixed(4)}`;
+        /**
+         * ------------------------------------------------------------------
+         * 4. INTERFAZ DE USUARIO (UI)
+         * ------------------------------------------------------------------
+         */
 
-            // Lógica de puntos Home/DX
-            if (!pointHome) {
-                // Primer clic: HOME
-                pointHome = e.latlng;
-                markerHome = L.circleMarker(pointHome, { color: '#00ff41', radius: 8 }).addTo(map).bindPopup("MI ESTACIÓN").openPopup();
-                document.getElementById('dx-status').innerText = "2. Haz clic en el destino (DX)";
-            } else if (!pointDX) {
-                // Segundo clic: DX
-                pointDX = e.latlng;
-                markerDX = L.circleMarker(pointDX, { color: '#ff4757', radius: 8 }).addTo(map).bindPopup("DESTINO DX").openPopup();
-                
-                // Calcular y mostrar resultados
-                const res = calculateBearing(pointHome.lat, pointHome.lng, pointDX.lat, pointDX.lng);
-                document.getElementById('bearing-info').innerText = res.bear + "°";
-                document.getElementById('distance-info').innerText = res.dist + " km";
-                document.getElementById('dx-status').innerText = "¡Cálculo completado!";
-
-                // Dibujar línea de conexión
-                polyline = L.polyline([pointHome, pointDX], { color: '#ffbf00', weight: 2, dashArray: '5, 10' }).addTo(map);
-            }
-        });
-
-        // --- RESETEAR CÁLCULOS ---
-        function resetDX() {
-            if (markerHome) map.removeLayer(markerHome);
-            if (markerDX) map.removeLayer(markerDX);
-            if (polyline) map.removeLayer(polyline);
-            pointHome = null; pointDX = null;
-            document.getElementById('bearing-info').innerText = "---°";
-            document.getElementById('distance-info').innerText = "--- km";
-            document.getElementById('dx-status').innerText = "1. Haz clic para marcar tu posición (Base)";
-        }
-
-        // --- RELOJ UTC ---
-        setInterval(() => {
+        // Actualizar reloj UTC
+        function updateClock() {
             const now = new Date();
             const h = String(now.getUTCHours()).padStart(2, '0');
             const m = String(now.getUTCMinutes()).padStart(2, '0');
             const s = String(now.getUTCSeconds()).padStart(2, '0');
-            document.getElementById('utc-clock').innerText = `${h}:${m}:${s} Z`;
-        }, 1000);
+            
+            const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            
+            document.getElementById('utc-clock').innerText = `${h}:${m}:${s}`;
+            document.getElementById('utc-date').innerText = `${days[now.getUTCDay()]}, ${now.getUTCDate()} ${months[now.getUTCMonth()]} ${now.getUTCFullYear()}`;
+        }
+
+        // Actualizar datos de Grid
+        function updateGridUI(grid, lat, lng) {
+            document.getElementById('current-grid').innerText = grid;
+            document.getElementById('current-coords').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        }
+
+        // Resetear Herramientas
+        function resetDXTools() {
+            if (markerHome) map.removeLayer(markerHome);
+            if (markerDX) map.removeLayer(markerDX);
+            if (polylineDX) map.removeLayer(polylineDX);
+            
+            markerHome = null;
+            markerDX = null;
+            polylineDX = null;
+
+            document.getElementById('dx-bearing').innerText = "---°";
+            document.getElementById('dx-dist').innerText = "--- km";
+            
+            // Resetear lista de pasos
+            document.getElementById('step-1').innerHTML = '<i class="fa-solid fa-circle-dot check-icon"></i> 1. Marca tu Base (Home)';
+            document.getElementById('step-2').innerHTML = '<i class="fa-regular fa-circle check-icon"></i> 2. Marca el Destino (DX)';
+            document.getElementById('step-2').classList.remove('step-active');
+
+            showToast("Calculadora reseteada", "info");
+        }
+
+        // Función de Búsqueda
+        function handleSearch() {
+            const query = document.getElementById('search-input').value.trim().toUpperCase();
+            if (!query) return;
+
+            // 1. Intentar buscar por Prefijo en la DB
+            // Buscamos coincidencia exacta o parcial al inicio
+            let found = null;
+            
+            // Búsqueda exacta primero
+            if (DXCC_DB[query]) {
+                found = DXCC_DB[query];
+            } else {
+                // Búsqueda "starts with" para prefijos más largos (ej: EA7 busca en EA)
+                // Esta es una lógica simple, en un programa real sería más complejo
+                for (let key in DXCC_DB) {
+                    if (query.startsWith(key)) {
+                        found = DXCC_DB[key];
+                        // Priorizar coincidencias más largas
+                        break; 
+                    }
+                }
+            }
+
+            if (found) {
+                map.flyTo([found.lat, found.lon], 6);
+                showToast(`País encontrado: ${found.name}`, "success");
+                // Auto click para mostrar grid
+                handleMapClick({ latlng: { lat: found.lat, lng: found.lon }});
+                return;
+            }
+
+            // 2. Intentar buscar por Grid (formato 4 o 6 caracteres)
+            const gridRegex = /^[A-R]{2}[0-9]{2}([A-X]{2})?$/;
+            if (gridRegex.test(query)) {
+                const coords = gridToLatLon(query);
+                if (coords) {
+                    map.flyTo([coords.lat, coords.lon], 8);
+                    showToast(`Grid localizado: ${query}`, "success");
+                    handleMapClick({ latlng: { lat: coords.lat, lng: coords.lon }});
+                    return;
+                }
+            }
+
+            showToast("No encontrado. Prueba 'EA' o 'IN80'", "error");
+        }
+
+        // Sistema de Notificaciones Toast
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-area');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            
+            let icon = '<i class="fa-solid fa-info-circle"></i>';
+            let color = '#fff';
+            
+            if (type === 'success') { icon = '<i class="fa-solid fa-check-circle"></i>'; color = 'var(--primary)'; }
+            if (type === 'error') { icon = '<i class="fa-solid fa-triangle-exclamation"></i>'; color = 'var(--danger)'; }
+
+            toast.style.borderLeftColor = color;
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            
+            container.appendChild(toast);
+
+            // Auto eliminar
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // Animación simple de números
+        function animateValue(id, end, unit) {
+            const obj = document.getElementById(id);
+            const start = 0;
+            const duration = 1000;
+            let startTimestamp = null;
+            
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const val = Math.floor(progress * (end - start) + start);
+                obj.innerHTML = val + unit;
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // Listener para tecla Enter en buscador
+        document.getElementById('search-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') handleSearch();
+        });
+
+        // INICIALIZACIÓN
+        window.onload = function() {
+            initMap();
+            setInterval(updateClock, 1000);
+            updateClock();
+        };
 
     </script>
 </body>
 </html>
-
