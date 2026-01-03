@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridFinder-DX | Dashboard de Radioaficionado</title>
+    <title>GridFinder-DX | Herramienta de Radioaficionado</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
         :root {
-            --primary: #00ff41; /* Verde neón radio */
+            --primary: #00ff41; /* Verde Radio */
             --accent: #ffbf00;  /* Ámbar */
             --bg: #0a0a0a;
             --panel: #161616;
@@ -21,18 +21,14 @@
             margin: 0; 
             padding: 0; 
             height: 100%; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
             background: var(--bg); 
             color: var(--text); 
             overflow: hidden; 
         }
         
-        /* Layout Principal */
-        .main-container { 
-            display: flex; 
-            height: 100vh; 
-            width: 100vw; 
-        }
+        /* Layout */
+        .main-container { display: flex; height: 100vh; width: 100vw; }
 
         /* BARRA LATERAL */
         .sidebar {
@@ -41,7 +37,7 @@
             border-right: 2px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 25px;
+            padding: 20px;
             box-sizing: border-box;
             overflow-y: auto;
             z-index: 1001;
@@ -49,90 +45,65 @@
 
         .sidebar h2 { 
             color: var(--primary); 
-            font-size: 1.4rem; 
+            font-size: 1.3rem; 
             border-bottom: 2px solid var(--primary); 
             padding-bottom: 10px; 
             margin-top: 0;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
         }
 
         /* MAPA */
-        #map { 
-            flex-grow: 1; 
-            background: #111; 
-        }
+        #map { flex-grow: 1; background: #111; }
 
         /* WIDGETS */
         .widget {
             background: #222;
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border: 1px solid #444;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
 
         .widget-title { 
-            font-size: 0.75rem; 
+            font-size: 0.7rem; 
             color: #888; 
             text-transform: uppercase; 
-            letter-spacing: 1px; 
-            margin-bottom: 8px; 
+            margin-bottom: 5px; 
         }
 
         .widget-value { 
-            font-size: 2rem; 
+            font-size: 1.8rem; 
             font-family: 'Courier New', monospace; 
             color: var(--primary); 
             font-weight: bold; 
         }
 
-        .utc-clock { 
-            font-size: 2.5rem; 
-            text-align: center; 
-            color: var(--accent); 
-            text-shadow: 0 0 10px rgba(255, 191, 0, 0.3);
-        }
+        .utc-clock { color: var(--accent); text-align: center; font-size: 2.2rem; }
 
-        .prop-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 15px; 
-        }
+        .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        .sub-value {
-            font-size: 1.2rem;
-            color: var(--primary);
+        /* BOTÓN RESET */
+        .btn-reset {
+            width: 100%;
+            background: #444;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            border-radius: 4px;
+            font-size: 0.8rem;
         }
+        .btn-reset:hover { background: #ff4757; border-color: #ff4757; }
 
-        /* Estilo para los datos del mapa */
-        #grid-info { 
-            color: #00e5ff; 
-            font-size: 2.2rem; 
-            text-shadow: 0 0 5px rgba(0, 229, 255, 0.4);
-        }
+        #dx-status { font-size: 0.75rem; color: var(--accent); margin-top: 8px; }
 
-        #coords-info {
-            font-size: 0.85rem;
-            color: #aaa;
-            margin-top: 5px;
-            font-family: monospace;
-        }
-
-        .footer-note {
-            margin-top: auto;
-            font-size: 0.7rem;
-            color: #555;
-            text-align: center;
-            border-top: 1px solid #333;
-            padding-top: 15px;
-        }
-
-        /* Ajuste para móviles */
+        /* Responsivo móvil */
         @media (max-width: 768px) {
             .main-container { flex-direction: column; }
-            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 2px solid var(--border); }
-            #map { height: 50vh; }
+            .sidebar { width: 100%; height: auto; }
+            #map { height: 60vh; }
         }
     </style>
 </head>
@@ -148,38 +119,29 @@
             </div>
 
             <div class="widget">
-                <div class="widget-title">QTH Locator (Maidenhead)</div>
-                <div id="grid-info" class="widget-value">ESPERA</div>
-                <div id="coords-info">Haz clic en el mapa para ubicar</div>
+                <div class="widget-title">Cálculo de Rumbo (DX)</div>
+                <div class="prop-grid">
+                    <div>
+                        <div class="widget-title" style="font-size: 0.6rem;">Azimut</div>
+                        <div id="bearing-info" class="widget-value" style="color: var(--accent);">---°</div>
+                    </div>
+                    <div>
+                        <div class="widget-title" style="font-size: 0.6rem;">Distancia</div>
+                        <div id="distance-info" class="widget-value" style="font-size: 1.2rem;">--- km</div>
+                    </div>
+                </div>
+                <div id="dx-status">1. Haz clic para marcar tu posición (Base)</div>
+                <button class="btn-reset" onclick="resetDX()">Borrar Puntos</button>
             </div>
 
             <div class="widget">
-                <div class="widget-title">Condiciones de Propagación</div>
-                <div class="prop-grid">
-                    <div>
-                        <div class="widget-title" style="font-size: 0.6rem;">SFI (Flujo)</div>
-                        <div class="sub-value">145</div>
-                    </div>
-                    <div>
-                        <div class="widget-title" style="font-size: 0.6rem;">Índice K</div>
-                        <div class="sub-value" style="color: #ff4757;">3</div>
-                    </div>
-                </div>
-                <div style="margin-top: 10px; font-size: 0.8rem;">
-                    Ionósfera: <span style="color: var(--primary);">Estable</span>
-                </div>
+                <div class="widget-title">QTH Locator Seleccionado</div>
+                <div id="grid-info" class="widget-value" style="font-size: 2rem; color: #00e5ff;">------</div>
+                <div id="coords-info" style="font-size: 0.75rem; color: #888; margin-top: 5px;">Lat/Lon Info</div>
             </div>
 
-            <div class="widget" style="background: transparent; border: 1px dashed #444;">
-                <div class="widget-title">Info</div>
-                <p style="font-size: 0.8rem; margin: 0; color: #bbb;">
-                    Usa esta herramienta para orientar tus antenas y reportar tu posición en concursos DX.
-                </p>
-            </div>
-
-            <div class="footer-note">
-                GRIDFINDER-DX v1.0<br>
-                Código Abierto para Radioafición
+            <div style="margin-top: auto; font-size: 0.7rem; color: #555; text-align: center;">
+                GRIDFINDER-DX v1.1 | 73 de la comunidad
             </div>
         </div>
 
@@ -189,80 +151,111 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // 1. Inicializar el Mapa con estilo Dark
+        // --- CONFIGURACIÓN DEL MAPA ---
         const map = L.map('map', {
             center: [20, 0],
             zoom: 3,
             zoomControl: false 
         });
         
-        // Botones de zoom abajo a la derecha
         L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-        // Capa de mapa oscuro (CartoDB DarkMatter)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap | GridFinder-DX'
+            attribution: 'GridFinder-DX'
         }).addTo(map);
 
-        let marker;
+        // Variables de estado
+        let pointHome = null;
+        let pointDX = null;
+        let markerHome, markerDX, polyline;
 
-        // 2. Algoritmo Maidenhead (Convierte Coordenadas a Grid)
+        // --- ALGORITMO MAIDENHEAD (GRID) ---
         function getGrid(lat, lon) {
             let adjLat = lat + 90;
             let adjLon = lon + 180;
-
-            let grid = "";
-            // Campos
-            grid += String.fromCharCode(65 + Math.floor(adjLon / 20));
+            let grid = String.fromCharCode(65 + Math.floor(adjLon / 20));
             grid += String.fromCharCode(65 + Math.floor(adjLat / 10));
-            // Cuadros
             grid += Math.floor((adjLon % 20) / 2);
             grid += Math.floor(adjLat % 10);
-            // Sub-cuadros
             grid += String.fromCharCode(97 + Math.floor((adjLon % 2) * 12));
             grid += String.fromCharCode(97 + Math.floor((adjLat % 1) * 24));
-
             return grid.toUpperCase();
         }
 
-        // 3. Manejo de Clics en el Mapa
+        // --- CÁLCULOS MATEMÁTICOS DX ---
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radio Tierra km
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            // Distancia (Haversine)
+            const a = Math.sin((φ2 - φ1) / 2) * Math.sin((φ2 - φ1) / 2) +
+                      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const d = R * c;
+
+            // Azimut
+            const y = Math.sin(Δλ) * Math.cos(φ2);
+            const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+            const θ = Math.atan2(y, x);
+            const brng = (θ * 180 / Math.PI + 360) % 360;
+
+            return { dist: d.toFixed(0), bear: brng.toFixed(1) };
+        }
+
+        // --- MANEJO DE CLICS ---
         map.on('click', function(e) {
             const { lat, lng } = e.latlng;
             const grid = getGrid(lat, lng);
 
-            // Actualizar panel lateral
+            // Actualizar info básica
             document.getElementById('grid-info').innerText = grid;
-            document.getElementById('coords-info').innerText = `Lat: ${lat.toFixed(4)} | Lon: ${lng.toFixed(4)}`;
+            document.getElementById('coords-info').innerText = `LAT: ${lat.toFixed(4)} | LON: ${lng.toFixed(4)}`;
 
-            // Actualizar Marcador
-            if (marker) {
-                marker.setLatLng(e.latlng);
-            } else {
-                marker = L.marker(e.latlng).addTo(map);
+            // Lógica de puntos Home/DX
+            if (!pointHome) {
+                // Primer clic: HOME
+                pointHome = e.latlng;
+                markerHome = L.circleMarker(pointHome, { color: '#00ff41', radius: 8 }).addTo(map).bindPopup("MI ESTACIÓN").openPopup();
+                document.getElementById('dx-status').innerText = "2. Haz clic en el destino (DX)";
+            } else if (!pointDX) {
+                // Segundo clic: DX
+                pointDX = e.latlng;
+                markerDX = L.circleMarker(pointDX, { color: '#ff4757', radius: 8 }).addTo(map).bindPopup("DESTINO DX").openPopup();
+                
+                // Calcular y mostrar resultados
+                const res = calculateBearing(pointHome.lat, pointHome.lng, pointDX.lat, pointDX.lng);
+                document.getElementById('bearing-info').innerText = res.bear + "°";
+                document.getElementById('distance-info').innerText = res.dist + " km";
+                document.getElementById('dx-status').innerText = "¡Cálculo completado!";
+
+                // Dibujar línea de conexión
+                polyline = L.polyline([pointHome, pointDX], { color: '#ffbf00', weight: 2, dashArray: '5, 10' }).addTo(map);
             }
-            
-            // Efecto visual: centrar suavemente
-            map.panTo(e.latlng);
         });
 
-        // 4. Reloj UTC en tiempo real
-        function updateClock() {
+        // --- RESETEAR CÁLCULOS ---
+        function resetDX() {
+            if (markerHome) map.removeLayer(markerHome);
+            if (markerDX) map.removeLayer(markerDX);
+            if (polyline) map.removeLayer(polyline);
+            pointHome = null; pointDX = null;
+            document.getElementById('bearing-info').innerText = "---°";
+            document.getElementById('distance-info').innerText = "--- km";
+            document.getElementById('dx-status').innerText = "1. Haz clic para marcar tu posición (Base)";
+        }
+
+        // --- RELOJ UTC ---
+        setInterval(() => {
             const now = new Date();
             const h = String(now.getUTCHours()).padStart(2, '0');
             const m = String(now.getUTCMinutes()).padStart(2, '0');
             const s = String(now.getUTCSeconds()).padStart(2, '0');
             document.getElementById('utc-clock').innerText = `${h}:${m}:${s} Z`;
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+        }, 1000);
 
-        // 5. Intentar geolocalización inicial
-        map.locate({setView: true, maxZoom: 5});
-        map.on('locationfound', (e) => {
-            const grid = getGrid(e.latlng.lat, e.latlng.lng);
-            document.getElementById('grid-info').innerText = grid;
-            marker = L.marker(e.latlng).addTo(map);
-        });
     </script>
 </body>
 </html>
+
