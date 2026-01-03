@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GridFinder-DX | QTH Locator</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        :root {
+            --primary: #00ff41; /* Verde Matrix/Radio */
+            --bg: #121212;
+            --panel: #1e1e1e;
+        }
+
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Courier New', monospace; background: var(--bg); color: white; }
+        
+        #map { height: 70vh; width: 100%; border-bottom: 2px solid var(--primary); }
+
+        .info-panel {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            background: var(--panel);
+        }
+
+        .data-card {
+            border: 1px solid #333;
+            padding: 10px;
+            border-radius: 5px;
+            background: #252525;
+        }
+
+        .data-card h3 { margin: 0; font-size: 0.8em; color: var(--primary); text-transform: uppercase; }
+        .data-card p { margin: 5px 0 0; font-size: 1.5em; font-weight: bold; }
+
+        .header {
+            position: absolute;
+            top: 10px;
+            left: 50px;
+            z-index: 1000;
+            background: rgba(0,0,0,0.8);
+            padding: 5px 15px;
+            border: 1px solid var(--primary);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2 style="margin:0; color:var(--primary);">GridFinder-DX 📡</h2>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="info-panel">
+        <div class="data-card">
+            <h3>Tu Grid Locator</h3>
+            <p id="grid-display">Haz clic en el mapa</p>
+        </div>
+        <div class="data-card">
+            <h3>Latitud</h3>
+            <p id="lat-display">-</p>
+        </div>
+        <div class="data-card">
+            <h3>Longitud</h3>
+            <p id="lon-display">-</p>
+        </div>
+        <div class="data-card">
+            <h3>Hora UTC</h3>
+            <p id="utc-clock">00:00:00</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Inicializar Mapa
+        const map = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        let marker;
+
+        // Función matemática para convertir Lat/Lon a Maidenhead (Grid)
+        function getGrid(lat, lon) {
+            let adjLat = lat + 90;
+            let adjLon = lon + 180;
+
+            let grid = "";
+            
+            // Campo (A-R)
+            grid += String.fromCharCode(65 + Math.floor(adjLon / 20));
+            grid += String.fromCharCode(65 + Math.floor(adjLat / 10));
+            
+            // Cuadro (0-9)
+            grid += Math.floor((adjLon % 20) / 2);
+            grid += Math.floor(adjLat % 10);
+            
+            // Sub-cuadro (a-x)
+            grid += String.fromCharCode(97 + Math.floor((adjLon % 2) * 12));
+            grid += String.fromCharCode(97 + Math.floor((adjLat % 1) * 24));
+
+            return grid.toUpperCase();
+        }
+
+        // Evento al hacer clic en el mapa
+        map.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+            const grid = getGrid(lat, lng);
+
+            // Actualizar Interfaz
+            document.getElementById('grid-display').innerText = grid;
+            document.getElementById('lat-display').innerText = lat.toFixed(5);
+            document.getElementById('lon-display').innerText = lng.toFixed(5);
+
+            // Mover Marcador
+            if (marker) {
+                marker.setLatLng(e.latlng);
+            } else {
+                marker = L.marker(e.latlng).addTo(map);
+            }
+        });
+
+        // Reloj UTC Simple
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('utc-clock').innerText = now.toISOString().substr(11, 8) + " Z";
+        }, 1000);
+    </script>
+</body>
+</html>
