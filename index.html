@@ -3,134 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GridFinder-DX | QTH Locator</title>
+    <title>GridFinder-DX | Dashboard de Radioaficionado</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
         :root {
-            --primary: #00ff41; /* Verde Matrix/Radio */
-            --bg: #121212;
-            --panel: #1e1e1e;
+            --primary: #00ff41; /* Verde neón radio */
+            --accent: #ffbf00;  /* Ámbar */
+            --bg: #0a0a0a;
+            --panel: #161616;
+            --text: #e0e0e0;
+            --border: #333;
         }
 
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Courier New', monospace; background: var(--bg); color: white; }
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            overflow: hidden; 
+        }
         
-        #map { height: 70vh; width: 100%; border-bottom: 2px solid var(--primary); }
+        /* Layout Principal */
+        .main-container { 
+            display: flex; 
+            height: 100vh; 
+            width: 100vw; 
+        }
 
-        .info-panel {
-            padding: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+        /* BARRA LATERAL */
+        .sidebar {
+            width: 350px;
             background: var(--panel);
+            border-right: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 25px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            z-index: 1001;
         }
 
-        .data-card {
-            border: 1px solid #333;
-            padding: 10px;
-            border-radius: 5px;
-            background: #252525;
+        .sidebar h2 { 
+            color: var(--primary); 
+            font-size: 1.4rem; 
+            border-bottom: 2px solid var(--primary); 
+            padding-bottom: 10px; 
+            margin-top: 0;
+            letter-spacing: 2px;
         }
 
-        .data-card h3 { margin: 0; font-size: 0.8em; color: var(--primary); text-transform: uppercase; }
-        .data-card p { margin: 5px 0 0; font-size: 1.5em; font-weight: bold; }
+        /* MAPA */
+        #map { 
+            flex-grow: 1; 
+            background: #111; 
+        }
 
-        .header {
-            position: absolute;
-            top: 10px;
-            left: 50px;
-            z-index: 1000;
-            background: rgba(0,0,0,0.8);
-            padding: 5px 15px;
-            border: 1px solid var(--primary);
-            border-radius: 4px;
+        /* WIDGETS */
+        .widget {
+            background: #222;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .widget-title { 
+            font-size: 0.75rem; 
+            color: #888; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            margin-bottom: 8px; 
+        }
+
+        .widget-value { 
+            font-size: 2rem; 
+            font-family: 'Courier New', monospace; 
+            color: var(--primary); 
+            font-weight: bold; 
+        }
+
+        .utc-clock { 
+            font-size: 2.5rem; 
+            text-align: center; 
+            color: var(--accent); 
+            text-shadow: 0 0 10px rgba(255, 191, 0, 0.3);
+        }
+
+        .prop-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; 
+        }
+
+        .sub-value {
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        /* Estilo para los datos del mapa */
+        #grid-info { 
+            color: #00e5ff; 
+            font-size: 2.2rem; 
+            text-shadow: 0 0 5px rgba(0, 229, 255, 0.4);
+        }
+
+        #coords-info {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-top: 5px;
+            font-family: monospace;
+        }
+
+        .footer-note {
+            margin-top: auto;
+            font-size: 0.7rem;
+            color: #555;
+            text-align: center;
+            border-top: 1px solid #333;
+            padding-top: 15px;
+        }
+
+        /* Ajuste para móviles */
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 2px solid var(--border); }
+            #map { height: 50vh; }
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2 style="margin:0; color:var(--primary);">GridFinder-DX 📡</h2>
-    </div>
+    <div class="main-container">
+        <div class="sidebar">
+            <h2>GRIDFINDER-DX</h2>
+            
+            <div class="widget">
+                <div class="widget-title">Tiempo Universal (UTC)</div>
+                <div id="utc-clock" class="widget-value utc-clock">00:00:00</div>
+            </div>
 
-    <div id="map"></div>
+            <div class="widget">
+                <div class="widget-title">QTH Locator (Maidenhead)</div>
+                <div id="grid-info" class="widget-value">ESPERA</div>
+                <div id="coords-info">Haz clic en el mapa para ubicar</div>
+            </div>
 
-    <div class="info-panel">
-        <div class="data-card">
-            <h3>Tu Grid Locator</h3>
-            <p id="grid-display">Haz clic en el mapa</p>
+            <div class="widget">
+                <div class="widget-title">Condiciones de Propagación</div>
+                <div class="prop-grid">
+                    <div>
+                        <div class="widget-title" style="font-size: 0.6rem;">SFI (Flujo)</div>
+                        <div class="sub-value">145</div>
+                    </div>
+                    <div>
+                        <div class="widget-title" style="font-size: 0.6rem;">Índice K</div>
+                        <div class="sub-value" style="color: #ff4757;">3</div>
+                    </div>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.8rem;">
+                    Ionósfera: <span style="color: var(--primary);">Estable</span>
+                </div>
+            </div>
+
+            <div class="widget" style="background: transparent; border: 1px dashed #444;">
+                <div class="widget-title">Info</div>
+                <p style="font-size: 0.8rem; margin: 0; color: #bbb;">
+                    Usa esta herramienta para orientar tus antenas y reportar tu posición en concursos DX.
+                </p>
+            </div>
+
+            <div class="footer-note">
+                GRIDFINDER-DX v1.0<br>
+                Código Abierto para Radioafición
+            </div>
         </div>
-        <div class="data-card">
-            <h3>Latitud</h3>
-            <p id="lat-display">-</p>
-        </div>
-        <div class="data-card">
-            <h3>Longitud</h3>
-            <p id="lon-display">-</p>
-        </div>
-        <div class="data-card">
-            <h3>Hora UTC</h3>
-            <p id="utc-clock">00:00:00</p>
-        </div>
+
+        <div id="map"></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-        // Inicializar Mapa
-        const map = L.map('map').setView([20, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+        // 1. Inicializar el Mapa con estilo Dark
+        const map = L.map('map', {
+            center: [20, 0],
+            zoom: 3,
+            zoomControl: false 
+        });
+        
+        // Botones de zoom abajo a la derecha
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // Capa de mapa oscuro (CartoDB DarkMatter)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap | GridFinder-DX'
         }).addTo(map);
 
         let marker;
 
-        // Función matemática para convertir Lat/Lon a Maidenhead (Grid)
+        // 2. Algoritmo Maidenhead (Convierte Coordenadas a Grid)
         function getGrid(lat, lon) {
             let adjLat = lat + 90;
             let adjLon = lon + 180;
 
             let grid = "";
-            
-            // Campo (A-R)
+            // Campos
             grid += String.fromCharCode(65 + Math.floor(adjLon / 20));
             grid += String.fromCharCode(65 + Math.floor(adjLat / 10));
-            
-            // Cuadro (0-9)
+            // Cuadros
             grid += Math.floor((adjLon % 20) / 2);
             grid += Math.floor(adjLat % 10);
-            
-            // Sub-cuadro (a-x)
+            // Sub-cuadros
             grid += String.fromCharCode(97 + Math.floor((adjLon % 2) * 12));
             grid += String.fromCharCode(97 + Math.floor((adjLat % 1) * 24));
 
             return grid.toUpperCase();
         }
 
-        // Evento al hacer clic en el mapa
+        // 3. Manejo de Clics en el Mapa
         map.on('click', function(e) {
             const { lat, lng } = e.latlng;
             const grid = getGrid(lat, lng);
 
-            // Actualizar Interfaz
-            document.getElementById('grid-display').innerText = grid;
-            document.getElementById('lat-display').innerText = lat.toFixed(5);
-            document.getElementById('lon-display').innerText = lng.toFixed(5);
+            // Actualizar panel lateral
+            document.getElementById('grid-info').innerText = grid;
+            document.getElementById('coords-info').innerText = `Lat: ${lat.toFixed(4)} | Lon: ${lng.toFixed(4)}`;
 
-            // Mover Marcador
+            // Actualizar Marcador
             if (marker) {
                 marker.setLatLng(e.latlng);
             } else {
                 marker = L.marker(e.latlng).addTo(map);
             }
+            
+            // Efecto visual: centrar suavemente
+            map.panTo(e.latlng);
         });
 
-        // Reloj UTC Simple
-        setInterval(() => {
+        // 4. Reloj UTC en tiempo real
+        function updateClock() {
             const now = new Date();
-            document.getElementById('utc-clock').innerText = now.toISOString().substr(11, 8) + " Z";
-        }, 1000);
+            const h = String(now.getUTCHours()).padStart(2, '0');
+            const m = String(now.getUTCMinutes()).padStart(2, '0');
+            const s = String(now.getUTCSeconds()).padStart(2, '0');
+            document.getElementById('utc-clock').innerText = `${h}:${m}:${s} Z`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // 5. Intentar geolocalización inicial
+        map.locate({setView: true, maxZoom: 5});
+        map.on('locationfound', (e) => {
+            const grid = getGrid(e.latlng.lat, e.latlng.lng);
+            document.getElementById('grid-info').innerText = grid;
+            marker = L.marker(e.latlng).addTo(map);
+        });
     </script>
 </body>
 </html>
